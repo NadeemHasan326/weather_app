@@ -1,99 +1,100 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:wheather_app/models/user_model.dart';
+import 'package:wheather_app/services/storage_service.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final StorageService _storageService = StorageService();
 
   // Get current user
-  User? get currentUser => _auth.currentUser;
+  Future<UserModel?> get currentUser async {
+    return await _storageService.getCurrentUser();
+  }
 
-  // Stream of auth state changes
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  // Check if user is logged in
+  Future<bool> isLoggedIn() async {
+    return await _storageService.isLoggedIn();
+  }
+
+  // Hash password (simple hash - in production use bcrypt or similar)
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
 
   // Sign up with email and password
-  Future<UserCredential?> signUp({
+  Future<UserModel> signUp({
     required String email,
     required String password,
-    String? displayName,
+    required String name,
   }) async {
     try {
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(email: email, password: password);
-
-      // Update display name if provided
-      if (displayName != null && userCredential.user != null) {
-        await userCredential.user!.updateDisplayName(displayName);
-        await userCredential.user!.reload();
+      // Check if user already exists
+      final existingUser = await _storageService.getUserByEmail(email);
+      if (existingUser != null) {
+        throw Exception('An account already exists for that email.');
       }
 
-      return userCredential;
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      // Create new user
+      final userId = DateTime.now().millisecondsSinceEpoch.toString();
+      final hashedPassword = _hashPassword(password);
+
+      final user = UserModel(
+        id: userId,
+        name: name,
+        email: email.toLowerCase().trim(),
+        password: hashedPassword,
+      );
+
+      // Save user to storage
+      await _storageService.saveUser(user);
+
+      return user;
     } catch (e) {
-      throw Exception('An unexpected error occurred: ${e.toString()}');
+      throw Exception(e.toString());
     }
   }
 
   // Sign in with email and password
-  Future<UserCredential?> signIn({
+  Future<UserModel> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      return userCredential;
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      // Find user by email
+      final user = await _storageService.getUserByEmail(email);
+      if (user == null) {
+        throw Exception('No user found for that email.');
+      }
+
+      // Verify password
+      final hashedPassword = _hashPassword(password);
+      if (user.password != hashedPassword) {
+        throw Exception('Wrong password provided.');
+      }
+
+      // Set as current user and logged in
+      await _storageService.setCurrentUser(user);
+      await _storageService.setLoggedIn(true);
+
+      return user;
     } catch (e) {
-      throw Exception('An unexpected error occurred: ${e.toString()}');
+      throw Exception(e.toString());
     }
   }
 
   // Sign out
   Future<void> signOut() async {
     try {
-      await _auth.signOut();
+      await _storageService.clearAll();
     } catch (e) {
       throw Exception('Error signing out: ${e.toString()}');
     }
   }
 
-  // Send password reset email
-  Future<void> sendPasswordResetEmail({required String email}) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
-    } catch (e) {
-      throw Exception('An unexpected error occurred: ${e.toString()}');
-    }
-  }
-
-  // Handle Firebase Auth exceptions and return user-friendly messages
-  String _handleAuthException(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'weak-password':
-        return 'The password provided is too weak.';
-      case 'email-already-in-use':
-        return 'An account already exists for that email.';
-      case 'invalid-email':
-        return 'The email address is not valid.';
-      case 'user-disabled':
-        return 'This user account has been disabled.';
-      case 'user-not-found':
-        return 'No user found for that email.';
-      case 'wrong-password':
-        return 'Wrong password provided.';
-      case 'too-many-requests':
-        return 'Too many requests. Please try again later.';
-      case 'operation-not-allowed':
-        return 'Email/password accounts are not enabled.';
-      case 'network-request-failed':
-        return 'Network error. Please check your internet connection.';
-      default:
-        return 'An error occurred: ${e.message ?? 'Unknown error'}';
-    }
+  // Get user info
+  Future<UserModel?> getUserInfo() async {
+    return await _storageService.getCurrentUser();
   }
 }

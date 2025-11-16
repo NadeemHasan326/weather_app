@@ -79,11 +79,11 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
           return;
         }
 
-        // Sign up with Firebase
+        // Sign up with shared preferences
         await _authService.signUp(
           email: event.email,
           password: event.password,
-          displayName: event.name,
+          name: event.name,
         );
 
         emit(SignUpSuccessState());

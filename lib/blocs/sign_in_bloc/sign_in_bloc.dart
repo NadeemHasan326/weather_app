@@ -49,7 +49,7 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
           return;
         }
 
-        // Sign in with Firebase
+        // Sign in with shared preferences
         await _authService.signIn(email: event.email, password: event.password);
 
         emit(SignInSuccessState());

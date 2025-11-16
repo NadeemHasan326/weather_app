@@ -18,11 +18,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeBloc _bloc = HomeBloc();
+  final AuthService _authService = AuthService();
+  String? _userName;
 
   @override
   void initState() {
     _bloc.add(InitEvent(context: context));
+    _loadUserName();
     super.initState();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = await _authService.currentUser;
+    if (mounted) {
+      setState(() {
+        _userName = user?.name ?? '';
+      });
+    }
   }
 
   @override
@@ -31,15 +43,22 @@ class _HomeScreenState extends State<HomeScreen> {
       create: (context) => _bloc,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: Colors.white,
           elevation: 0,
+          title: Text(
+            _userName ?? 'Loading...',
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white),
+              icon: const Icon(Icons.logout, color: Colors.black),
               onPressed: () async {
                 try {
-                  final authService = AuthService();
-                  await authService.signOut();
+                  await _authService.signOut();
                   if (context.mounted) {
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
@@ -115,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                SizedBox(height: kToolbarHeight + 20),
+                SizedBox(height: 20),
                 Text(
                   "Search weather",
                   style: TextStyle(
