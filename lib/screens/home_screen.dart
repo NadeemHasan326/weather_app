@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
-import 'package:wheather_app/blocs/home_bloc.dart';
-import 'package:wheather_app/blocs/home_event.dart';
-import 'package:wheather_app/blocs/home_state.dart';
+import 'package:wheather_app/blocs/home_bloc/home_bloc.dart';
+import 'package:wheather_app/blocs/home_bloc/home_event.dart';
+import 'package:wheather_app/blocs/home_bloc/home_state.dart';
+import 'package:wheather_app/screens/sign_in_screen.dart';
+import 'package:wheather_app/services/auth_service.dart';
 import 'package:wheather_app/utils/utils.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -28,6 +30,34 @@ class _HomeScreenState extends State<HomeScreen> {
     return BlocProvider(
       create: (context) => _bloc,
       child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout, color: Colors.white),
+              onPressed: () async {
+                try {
+                  final authService = AuthService();
+                  await authService.signOut();
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const SignInScreen(),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    Utils.showToast(
+                      message: 'Error signing out: ${e.toString()}',
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        ),
         body: BlocConsumer<HomeBloc, HomeState>(
           builder: (context, state) {
             return _buildBody();

@@ -2,8 +2,8 @@ import 'dart:developer';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:wheather_app/blocs/home_event.dart';
-import 'package:wheather_app/blocs/home_state.dart';
+import 'package:wheather_app/blocs/home_bloc/home_event.dart';
+import 'package:wheather_app/blocs/home_bloc/home_state.dart';
 import 'package:wheather_app/models/wheather_model.dart';
 import 'package:wheather_app/services/wheather_service.dart';
 
